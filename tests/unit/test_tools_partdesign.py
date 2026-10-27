@@ -1045,6 +1045,46 @@ class TestPartDesignTools:
         mock_bridge.execute_python.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("tool_name", "tool_arguments"),
+        [
+            ("get_sketch_info", {"sketch_name": "Sketch"}),
+            (
+                "add_external_geometry",
+                {
+                    "sketch_name": "Sketch",
+                    "object_name": "Box",
+                    "element": "Edge1",
+                },
+            ),
+        ],
+    )
+    async def test_external_geometry_count_uses_subelements(
+        self,
+        register_tools,
+        mock_bridge,
+        tool_name: str,
+        tool_arguments: dict[str, str],
+    ) -> None:
+        """Generated code counts referenced subelements, not linked objects."""
+        mock_bridge.execute_python = AsyncMock(
+            return_value=ExecutionResult(
+                success=True,
+                result={"success": True, "external_geometry_count": 3},
+                stdout="",
+                stderr="",
+                execution_time_ms=1.0,
+            )
+        )
+
+        await register_tools[tool_name](**tool_arguments)
+        code = mock_bridge.execute_python.call_args.args[0]
+        compile(code, "<generated>", "exec")
+
+        assert "ExternalGeometryCount" not in code
+        assert "len(subelements) for _, subelements in sketch.ExternalGeometry" in code
+
+    @pytest.mark.asyncio
     async def test_delete_sketch_geometry(self, register_tools, mock_bridge):
         """delete_sketch_geometry should delete geometry from sketch."""
         mock_bridge.execute_python = AsyncMock(

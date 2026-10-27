@@ -2835,11 +2835,14 @@ doc.openTransaction("Add External Geometry")
 try:
     sketch.addExternal({object_name!r}, {element!r})
     doc.recompute()
+    external_geometry_count = sum(
+        len(subelements) for _, subelements in sketch.ExternalGeometry
+    )
     doc.commitTransaction()
 
     _result_ = {{
         "success": True,
-        "external_geometry_count": sketch.ExternalGeometryCount,
+        "external_geometry_count": external_geometry_count,
     }}
 except Exception:
     doc.abortTransaction()
@@ -2970,12 +2973,15 @@ sketch = doc.getObject({sketch_name!r})
 if sketch is None:
     raise ValueError(f"Sketch not found: {sketch_name!r}")
 
+external_geometry_count = sum(
+    len(subelements) for _, subelements in sketch.ExternalGeometry
+)
 _result_ = {{
     "name": sketch.Name,
     "label": sketch.Label,
     "geometry_count": sketch.GeometryCount,
     "constraint_count": sketch.ConstraintCount,
-    "external_geometry_count": sketch.ExternalGeometryCount,
+    "external_geometry_count": external_geometry_count,
     "fully_constrained": sketch.FullyConstrained if hasattr(sketch, "FullyConstrained") else None,
     "dof": sketch.solve() if hasattr(sketch, "solve") else None,
 }}
