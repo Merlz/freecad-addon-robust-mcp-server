@@ -140,6 +140,8 @@ _result_ = {{
     "property_name": property_name,
     "value": value,
     "shape_valid": bool(feature.Shape and feature.Shape.isValid()),
+    "z_min": float(feature.Shape.BoundBox.ZMin),
+    "z_max": float(feature.Shape.BoundBox.ZMax),
 }}
 """
         )
@@ -151,6 +153,10 @@ _result_ = {{
             expected_value = symmetric
         assert inspection.result["value"] == expected_value
         assert inspection.result["shape_valid"] is True
+        if tool_name == "pad_sketch":
+            expected_z_min, expected_z_max = (-5.0, 5.0) if symmetric else (0.0, 10.0)
+            assert inspection.result["z_min"] == pytest.approx(expected_z_min)
+            assert inspection.result["z_max"] == pytest.approx(expected_z_max)
     finally:
         await bridge.execute_python(
             f"""

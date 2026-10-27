@@ -213,7 +213,18 @@ class TestSymmetricExtrudeExecution:
             ("groove_sketch", "groove", "PartDesign::Groove", {"angle": 180.0}),
         ],
     )
-    @pytest.mark.parametrize("property_name", ["SideType", "Midplane", "Symmetric"])
+    @pytest.mark.parametrize(
+        ("property_name", "symmetry_properties"),
+        [
+            ("SideType", ["SideType"]),
+            ("Midplane", ["Midplane"]),
+            ("Symmetric", ["Symmetric"]),
+            ("SideType", ["SideType", "Midplane"]),
+            ("SideType", ["SideType", "Symmetric"]),
+            ("Midplane", ["Midplane", "Symmetric"]),
+            ("SideType", ["SideType", "Midplane", "Symmetric"]),
+        ],
+    )
     @pytest.mark.parametrize("symmetric", [True, False])
     async def test_executes_each_property_path(
         self,
@@ -222,10 +233,11 @@ class TestSymmetricExtrudeExecution:
         feature_type: str,
         operation_argument: dict[str, float],
         property_name: str,
+        symmetry_properties: list[str],
         symmetric: bool,
     ) -> None:
         """Set the declared property even when Python attribute probing fails."""
-        freecad = _FakeFreeCAD([property_name])
+        freecad = _FakeFreeCAD(symmetry_properties)
         bridge = AsyncMock()
         self._configure_executing_bridge(bridge, freecad)
         tools = self._register_tools(bridge)
@@ -239,7 +251,10 @@ class TestSymmetricExtrudeExecution:
         feature = freecad.ActiveDocument.body.feature
         assert feature is not None
         assert feature.TypeId == feature_type
-        assert feature.initially_visible_symmetry_properties[property_name] is False
+        assert set(feature.initially_visible_symmetry_properties) == set(
+            symmetry_properties
+        )
+        assert not any(feature.initially_visible_symmetry_properties.values())
         if property_name == "SideType":
             expected_value: str | bool = "Symmetric" if symmetric else "One side"
         else:

@@ -41,7 +41,7 @@ Python, operating-system, and MCP-client combinations.
 | Priority | Blocker                                                         | Why it blocks release                                                                                                                | Required result                                                                                                       |
 | -------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | P0       | Unauthenticated code execution bridge                           | Any process able to reach ports 9875 or 9876 can submit Python that runs inside FreeCAD with the user's privileges                   | Pairing/authentication, loopback-only defaults, bounded requests, and an explicit unsafe-code policy                  |
-| P0       | Timeout is not an execution boundary                            | XML-RPC calls can continue mutating FreeCAD after the MCP caller receives a timeout, and the configured default is not wired through | Honor configured/per-call timeouts, serialize shared clients, and document or implement cancellation semantics        |
+| P0       | Timeout is not an execution boundary                            | Python already sent to FreeCAD can continue mutating the model after the MCP caller receives a timeout                               | Document or implement cancellation semantics for work already sent to FreeCAD                                         |
 | P0       | FreeCAD 1.1 and Qt6 compatibility defects remain                | Workbench load, Qt binding fallback, shutdown, Part Design, external geometry, inspection, screenshots, and pockets have open bugs   | Merge the focused compatibility fixes and run them against supported stable FreeCAD builds                            |
 | P0       | MCP 2.3 migration needs final artifact certification            | The merged migration and GUI/headless CI pass, but the exact unlocked wheel/client matrix is incomplete                              | Verify the built wheel through stdio and HTTP on supported Python, FreeCAD, operating-system, and client combinations |
 | P0       | Workbench release archive cannot be built                       | The workflow copies `LICENSE`, but only `LICENSE-CODE` and `LICENSE-ICON` exist                                                      | Archive job passes and manifest/archive license names agree                                                           |
@@ -57,7 +57,7 @@ must stay loopback-only until it has a real trust boundary.
 
 **Triage date:** 2026-10-26
 
-**Live inventory after cleanup:** 14 open issues, 8 open human-authored pull
+**Live inventory after cleanup:** 11 open issues, 7 open human-authored pull
 requests, and zero open Dependabot pull requests
 
 **Remote `main` at triage:** `7adb8ad`, the merge commit for PR #147
@@ -70,8 +70,9 @@ merges.
 **Completed cleanup:** Maintainer comments were posted on every open
 human-authored pull request. PRs #112 and #141 were closed. Issues #19 and #96,
 issues #104, #120, #121, #128, #134, and #136 were commented and closed as resolved,
-fixed, or duplicate. PR #140 closed issue #138, and PR #151 closed issue #139
-with the fail-closed Qt startup and safe container documentation fixes.
+fixed, or duplicate. PR #140 closed issue #138, PR #151 closed issue #139, and
+PR #152 closed issue #143 with the fail-closed Qt startup, safe container
+documentation, and timeout/concurrency fixes.
 Canonical issues and their active implementation pull requests remain open
 until their acceptance criteria pass.
 
@@ -399,18 +400,20 @@ public release, or document older versions as unsupported and block opening
 untrusted files. Test and declare the actual compatibility interval in both
 manifest and docs.
 
-#### MEDIUM-5: Timeouts do not cancel queued or running Python
+#### MEDIUM-5: Timeouts cannot cancel Python already running in FreeCAD
 
 **Category:** Denial of service and integrity  
 **Reachability:** Any caller able to invoke execution tools  
-**Evidence:** `server.py:742-758` stops waiting after a timeout, while queue
-processing at lines 714-719 may still execute or complete the request. Python
-`exec` occurs synchronously on the FreeCAD thread.  
+**Evidence:** Configured and per-call deadlines now reach every bridge. Socket
+requests whose deadlines expire before the write are not sent, but Python already
+written to FreeCAD executes synchronously and cannot be interrupted safely.
+
 **Exploit:** A request times out from the client's perspective but later modifies
 the model, or an infinite/long computation blocks the GUI after the caller has
-already retried.  
-**Remediation:** Treat timeout as a client wait limit, not an execution limit, in
-current documentation. Reject new work while a timed-out action may still be
+already retried.
+
+**Remediation:** Continue to document timeout as a client wait limit for work
+already sent. Reject conflicting new work while a timed-out action may still be
 active, add request state and cancellation where FreeCAD operations permit it,
 and move arbitrary code that needs enforceable limits to an isolated process.
 
