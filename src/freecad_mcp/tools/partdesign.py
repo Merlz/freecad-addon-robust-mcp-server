@@ -316,12 +316,16 @@ try:
     pad.Profile = sketch
     pad.Length = {length}
     _symmetric = {symmetric}
-    if hasattr(pad, "SideType"):
+    if "SideType" in pad.PropertiesList:
         pad.SideType = "Symmetric" if _symmetric else "One side"
-    elif hasattr(pad, "Midplane"):
+    elif "Midplane" in pad.PropertiesList:
         pad.Midplane = _symmetric
-    else:
+    elif "Symmetric" in pad.PropertiesList:
         pad.Symmetric = _symmetric
+    else:
+        raise AttributeError(
+            "PartDesign::Pad exposes no supported symmetric extrusion property"
+        )
     pad.Reversed = {reversed}
 
     doc.recompute()
@@ -640,10 +644,16 @@ try:
     rev.Profile = sketch
     rev.Angle = {angle}
     _symmetric = {symmetric}
-    if hasattr(rev, "Midplane"):
+    if "SideType" in rev.PropertiesList:
+        rev.SideType = "Symmetric" if _symmetric else "One side"
+    elif "Midplane" in rev.PropertiesList:
         rev.Midplane = _symmetric
-    else:
+    elif "Symmetric" in rev.PropertiesList:
         rev.Symmetric = _symmetric
+    else:
+        raise AttributeError(
+            "PartDesign::Revolution exposes no supported symmetric extrusion property"
+        )
     rev.Reversed = {reversed}
 
     # Set axis reference
@@ -735,10 +745,16 @@ try:
     groove.Profile = sketch
     groove.Angle = {angle}
     _symmetric = {symmetric}
-    if hasattr(groove, "Midplane"):
+    if "SideType" in groove.PropertiesList:
+        groove.SideType = "Symmetric" if _symmetric else "One side"
+    elif "Midplane" in groove.PropertiesList:
         groove.Midplane = _symmetric
-    else:
+    elif "Symmetric" in groove.PropertiesList:
         groove.Symmetric = _symmetric
+    else:
+        raise AttributeError(
+            "PartDesign::Groove exposes no supported symmetric extrusion property"
+        )
     groove.Reversed = {reversed}
 
     # Set axis reference

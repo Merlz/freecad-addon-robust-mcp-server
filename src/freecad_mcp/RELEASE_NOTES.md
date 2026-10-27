@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Symmetric Part Design operations**: Pad, Revolution, and Groove now inspect
+  FreeCAD's declared property list instead of using Python attribute probing,
+  which is unreliable for dynamic FreeCAD properties. The tools prefer the
+  current `SideType` property and retain `Midplane` and `Symmetric` fallbacks
+  for older supported releases and compatible forks.
 - **Execution timeout configuration**: `FREECAD_TIMEOUT_MS` now supplies the
   default in XML-RPC, socket, and embedded modes, while per-call values take
   precedence. XML-RPC proxy access is serialized to avoid concurrent use of
