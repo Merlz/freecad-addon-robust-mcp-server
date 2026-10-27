@@ -42,7 +42,7 @@ def _register_tools(
 
 
 def _setup_code(doc_name: str, include_base_solid: bool) -> str:
-    """Return FreeCAD code that creates a body and a closed profile sketch."""
+    """Create a target body whose origin object names require role lookup."""
     return f"""
 import FreeCAD
 import Part
@@ -51,6 +51,8 @@ doc_name = {doc_name!r}
 if doc_name in FreeCAD.listDocuments():
     FreeCAD.closeDocument(doc_name)
 doc = FreeCAD.newDocument(doc_name)
+# Force the target body's origin objects to receive numeric name suffixes.
+doc.addObject("PartDesign::Body", "AxisNameOwner")
 body = doc.addObject("PartDesign::Body", "Body")
 
 if {include_base_solid!r}:

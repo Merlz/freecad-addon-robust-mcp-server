@@ -659,8 +659,18 @@ try:
     # Set axis reference
     axis_name = {axis!r}
     if axis_name.startswith("Base_"):
-        axis_ref = axis_name.replace("Base_", "")
-        rev.ReferenceAxis = (body.Origin.getObject(f"{{axis_ref}}_Axis"), [""])
+        axis_role = f"{{axis_name.removeprefix('Base_')}}_Axis"
+        axis_object = next(
+            (
+                feature
+                for feature in body.Origin.OriginFeatures
+                if getattr(feature, "Role", None) == axis_role
+            ),
+            None,
+        )
+        if axis_object is None:
+            raise ValueError(f"Body origin has no axis with role {{axis_role!r}}")
+        rev.ReferenceAxis = (axis_object, [""])
     elif axis_name.startswith("Sketch_"):
         if axis_name == "Sketch_V":
             rev.ReferenceAxis = (sketch, ["V_Axis"])
@@ -760,8 +770,18 @@ try:
     # Set axis reference
     axis_name = {axis!r}
     if axis_name.startswith("Base_"):
-        axis_ref = axis_name.replace("Base_", "")
-        groove.ReferenceAxis = (body.Origin.getObject(f"{{axis_ref}}_Axis"), [""])
+        axis_role = f"{{axis_name.removeprefix('Base_')}}_Axis"
+        axis_object = next(
+            (
+                feature
+                for feature in body.Origin.OriginFeatures
+                if getattr(feature, "Role", None) == axis_role
+            ),
+            None,
+        )
+        if axis_object is None:
+            raise ValueError(f"Body origin has no axis with role {{axis_role!r}}")
+        groove.ReferenceAxis = (axis_object, [""])
     elif axis_name.startswith("Sketch_"):
         if axis_name == "Sketch_V":
             groove.ReferenceAxis = (sketch, ["V_Axis"])

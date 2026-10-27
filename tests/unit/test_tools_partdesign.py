@@ -1247,6 +1247,9 @@ class TestSymmetricExtrudeCompatibility:
         assert code.index('"SideType" in') < code.index('"Midplane" in')
         assert code.index('"Midplane" in') < code.index('"Symmetric" in')
         assert code.count("_symmetric =") == 1
+        assert "for feature in body.Origin.OriginFeatures" in code
+        assert 'getattr(feature, "Role", None) == axis_role' in code
+        assert "body.Origin.getObject" not in code
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("symmetric", [True, False])

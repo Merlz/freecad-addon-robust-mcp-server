@@ -18,6 +18,7 @@ class _FakeFeature:
     PropertiesList: list[str]
     assignments: dict[str, Any]
     initially_visible_symmetry_properties: dict[str, bool]
+    ReferenceAxis: tuple[Any, list[str]]
 
     def __init__(
         self,
@@ -47,11 +48,17 @@ class _FakeFeature:
 
 
 class _FakeOrigin:
-    """Provide reference axes used by revolution and groove code."""
+    """Provide role-addressable axes with auto-suffixed document names."""
 
-    def getObject(self, name: str) -> object:
-        """Return a stable placeholder for an origin feature."""
-        return {"name": name}
+    class _Feature:
+        """Represent one FreeCAD origin feature."""
+
+        def __init__(self, role: str, name: str) -> None:
+            self.Role = role
+            self.Name = name
+
+    def __init__(self, axis_roles: list[str]) -> None:
+        self.OriginFeatures = [self._Feature(role, f"{role}001") for role in axis_roles]
 
 
 class _FakeBody:
@@ -59,9 +66,14 @@ class _FakeBody:
 
     TypeId = "PartDesign::Body"
 
-    def __init__(self, sketch: object, symmetry_properties: list[str]) -> None:
+    def __init__(
+        self,
+        sketch: object,
+        symmetry_properties: list[str],
+        axis_roles: list[str],
+    ) -> None:
         self.Group = [sketch]
-        self.Origin = _FakeOrigin()
+        self.Origin = _FakeOrigin(axis_roles)
         self._symmetry_properties = symmetry_properties
         self.feature: _FakeFeature | None = None
 
@@ -74,9 +86,17 @@ class _FakeBody:
 class _FakeDocument:
     """Provide the document operations used by generated Part Design code."""
 
-    def __init__(self, symmetry_properties: list[str]) -> None:
+    def __init__(
+        self,
+        symmetry_properties: list[str],
+        axis_roles: list[str] | None = None,
+    ) -> None:
         self.sketch = object()
-        self.body = _FakeBody(self.sketch, symmetry_properties)
+        self.body = _FakeBody(
+            self.sketch,
+            symmetry_properties,
+            axis_roles if axis_roles is not None else ["X_Axis", "Y_Axis", "Z_Axis"],
+        )
         self.Objects = [self.body]
         self.committed = False
         self.aborted = False
@@ -103,8 +123,12 @@ class _FakeDocument:
 class _FakeFreeCAD:
     """Provide the FreeCAD module surface used by generated code."""
 
-    def __init__(self, symmetry_properties: list[str]) -> None:
-        self.ActiveDocument = _FakeDocument(symmetry_properties)
+    def __init__(
+        self,
+        symmetry_properties: list[str],
+        axis_roles: list[str] | None = None,
+    ) -> None:
+        self.ActiveDocument = _FakeDocument(symmetry_properties, axis_roles)
 
     def getDocument(self, _name: str) -> _FakeDocument:
         """Return the active fake document."""
@@ -221,6 +245,11 @@ class TestSymmetricExtrudeExecution:
         else:
             expected_value = symmetric
         assert feature.assignments == {property_name: expected_value}
+        if tool_name != "pad_sketch":
+            axis_object, subelements = feature.ReferenceAxis
+            assert axis_object.Role == "X_Axis"
+            assert axis_object.Name == "X_Axis001"
+            assert subelements == [""]
         assert result["type_id"] == feature_type
         assert freecad.ActiveDocument.committed is True
         assert freecad.ActiveDocument.aborted is False
@@ -260,6 +289,28 @@ class TestSymmetricExtrudeExecution:
                 sketch_name="Sketch",
                 symmetric=True,
                 **operation_argument,
+            )
+
+        assert freecad.ActiveDocument.committed is False
+        assert freecad.ActiveDocument.aborted is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("tool_name", ["revolution_sketch", "groove_sketch"])
+    async def test_rejects_missing_base_axis_and_rolls_back(
+        self,
+        tool_name: str,
+    ) -> None:
+        """Fail clearly when an origin does not expose the requested axis role."""
+        freecad = _FakeFreeCAD(["Midplane"], axis_roles=[])
+        bridge = AsyncMock()
+        self._configure_executing_bridge(bridge, freecad)
+        tools = self._register_tools(bridge)
+
+        with pytest.raises(ValueError, match="no axis with role 'X_Axis'"):
+            await tools[tool_name](
+                sketch_name="Sketch",
+                angle=180.0,
+                symmetric=True,
             )
 
         assert freecad.ActiveDocument.committed is False

@@ -9,6 +9,10 @@
   which is unreliable for dynamic FreeCAD properties. The tools prefer the
   current `SideType` property and retain `Midplane` and `Symmetric` fallbacks
   for older supported releases and compatible forks.
+- **Part Design base-axis resolution**: Revolution and Groove now resolve base
+  axes by their stable FreeCAD origin role instead of assuming the document
+  object name has no numeric suffix. This keeps repeated-body operations
+  compatible with FreeCAD 1.0.x and newer releases.
 - **Execution timeout configuration**: `FREECAD_TIMEOUT_MS` now supplies the
   default in XML-RPC, socket, and embedded modes, while per-call values take
   precedence. XML-RPC proxy access is serialized to avoid concurrent use of
