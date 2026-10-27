@@ -104,11 +104,13 @@ _result_ = {{
             "references": [["BaseFeature", ["Edge1", "Edge2", "Edge3"]]],
         }
     finally:
-        await bridge.execute_python(
-            f"""
+        try:
+            await bridge.execute_python(
+                f"""
 if {doc_name!r} in FreeCAD.listDocuments():
     FreeCAD.closeDocument({doc_name!r})
 _result_ = True
 """
-        )
-        await bridge.disconnect()
+            )
+        finally:
+            await bridge.disconnect()
